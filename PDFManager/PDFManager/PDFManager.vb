@@ -6,15 +6,14 @@ Public Class PDFManager
 
     Private _listOfPdfs As List(Of PDFInfo)
     Private _work As String = ".\PDFManagerWork"
-    Private _output As String = String.Empty
+    Private _output As String = ".\PDFManagerWork"
 
     Private Structure PDFInfo
         Dim PATH As String
         Dim SAVE_PAGE As String
     End Structure
 
-    Sub New(ByVal outPath As String)
-        Me._output = outPath
+    Sub New()
         Me._listOfPdfs = New List(Of PDFInfo)
     End Sub
 
@@ -24,7 +23,6 @@ Public Class PDFManager
         d.SAVE_PAGE = String.Empty
 
         _listOfPdfs.Add(d)
-
     End Sub
 
     Public Sub add(ByVal srcPath As String, ByVal pages As String())
@@ -39,9 +37,7 @@ Public Class PDFManager
         End If
 
         _listOfPdfs.Add(d)
-
     End Sub
-
 
     Public Function Merge() As Boolean
         If _listOfPdfs.Count < 1 Then
@@ -52,14 +48,17 @@ Public Class PDFManager
         Try
             CreateDirectory()
 
-            CopyPDFToWork()
-
-            Dim files As List(Of String) = GetAllPDFsInWork()
+            If Not CopyPDFToWork() Then
+                result = False
+                Exit Try
+            End If
 
             Using doc As New Document()
                 Using pdfCopy As New PdfCopy(doc, New FileStream(_output, FileMode.Create))
                     doc.Open()
 
+                    ' create merge pdf
+                    Dim files As List(Of String) = GetAllPDFsInWork()
                     For Each file In files
                         Dim pdfReader As New PdfReader(file)
                         pdfCopy.AddDocument(pdfReader)
@@ -83,9 +82,17 @@ Public Class PDFManager
 
     End Function
 
-    Private Function Clear()
+    Public Function Clear()
         _listOfPdfs = New List(Of PDFInfo)
     End Function
+
+    Public Sub SetWorkPath(ByVal work As String)
+        Me._work = work
+    End Sub
+
+    Public Sub SetOutputPath(ByVal output As String)
+        Me._output = output
+    End Sub
 
     Private Function GetAllPDFsInWork() As List(Of String)
         Dim files As IEnumerable(Of String) = Directory.EnumerateFiles(_work, "*.pdf", SearchOption.TopDirectoryOnly)
@@ -96,15 +103,18 @@ Public Class PDFManager
         For Each file In _listOfPdfs
             ' delete pages
             If String.IsNullOrEmpty(file.SAVE_PAGE) Then
-                If Not CopyPDFToWork(file.PATH) Then
-                    ' error log
+                If Not CopyNoRemovedPDFToWork(file.PATH) Then
+                    Return False
                 End If
             Else
                 If Not CopyRemovedPDFToWork(file.PATH, file.SAVE_PAGE) Then
-                    ' error log
+                    Return False
                 End If
             End If
         Next
+
+        Return True
+
     End Function
 
     Private Function CopyRemovedPDFToWork(ByVal srcFile As String, ByVal pages As String) As Boolean
@@ -128,7 +138,7 @@ Public Class PDFManager
 
     End Function
 
-    Private Function CopyPDFToWork(ByVal srcFile As String) As Boolean
+    Private Function CopyNoRemovedPDFToWork(ByVal srcFile As String) As Boolean
         Dim result As Boolean = False
         Dim fileName As String = Path.GetFileNameWithoutExtension(srcFile)
         Try
@@ -162,7 +172,4 @@ Public Class PDFManager
 
     End Function
 
-    Sub New()
-        _listOfPdfs = New List(Of PDFInfo)
-    End Sub
 End Class
