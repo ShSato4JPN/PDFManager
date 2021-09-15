@@ -17,7 +17,7 @@ Module RemovePages
 
         Try
             Using pdfReader As New PdfReader(targetSrcPath)
-                pdfReader.SelectPages("1,3")
+                pdfReader.SelectPages("1,3,100")
                 Using pdfStamper As New PdfStamper(pdfReader, New FileStream(outSrcPath, FileMode.Create))
                     Debug.WriteLine("delete success!")
                 End Using
